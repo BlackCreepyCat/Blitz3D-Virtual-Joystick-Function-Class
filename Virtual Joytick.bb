@@ -6,17 +6,17 @@
 
 ; Structure pour le Joystick Virtuel
 Type VirtualJoystick
-    Field X%          ; Position X absolue du joystick (coin supÈrieur gauche)
-    Field Y%          ; Position Y absolue du joystick (coin supÈrieur gauche)
-    Field Radius%     ; Rayon du joystick (diamËtre / 2)
-    Field ButtonX#    ; Position X relative du bouton (flottant pour prÈcision)
-    Field ButtonY#    ; Position Y relative du bouton (flottant pour prÈcision)
-    Field IsPressed%  ; …tat : est-ce que le joystick est pressÈ ?
-    Field ValueX#     ; Valeur X (-1.0 ‡ 1.0) selon dÈplacement
-    Field ValueY#     ; Valeur Y (-1.0 ‡ 1.0) selon dÈplacement
+    Field X%          ; Position X absolue du joystick (coin sup√©rieur gauche)
+    Field Y%          ; Position Y absolue du joystick (coin sup√©rieur gauche)
+    Field Radius%     ; Rayon du joystick (diam√®tre / 2)
+    Field ButtonX#    ; Position X relative du bouton (flottant pour pr√©cision)
+    Field ButtonY#    ; Position Y relative du bouton (flottant pour pr√©cision)
+    Field IsPressed%  ; √âtat : est-ce que le joystick est press√© ?
+    Field ValueX#     ; Valeur X (-1.0 √† 1.0) selon d√©placement
+    Field ValueY#     ; Valeur Y (-1.0 √† 1.0) selon d√©placement
 End Type
 
-; Fonction pour crÈer un joystick virtuel
+; Fonction pour cr√©er un joystick virtuel
 Function CreateVirtualJoystick.VirtualJoystick(X%, Y%, Radius%)
     Local J.VirtualJoystick = New VirtualJoystick
     
@@ -32,17 +32,17 @@ Function CreateVirtualJoystick.VirtualJoystick(X%, Y%, Radius%)
     Return J
 End Function
 
-; Fonction pour mettre ‡ jour et dessiner le joystick
+; Fonction pour mettre √† jour le joystick
 Function UpdateVirtualJoystick(J.VirtualJoystick)
     If J = Null Then Return
     
     Local CenterX# = J\X% + J\Radius%  ; Centre absolu X du joystick
     Local CenterY# = J\Y% + J\Radius%  ; Centre absolu Y du joystick
     
-    ; VÈrifier si la souris est dans la zone du joystick
+    ; V√©rifier si la souris est dans la zone du joystick
     Local MouseInZone% = (MouseX() >= J\X% And MouseX() <= J\X% + J\Radius% * 2 And MouseY() >= J\Y% And MouseY() <= J\Y% + J\Radius% * 2)
     
-    ; Si le bouton gauche est pressÈ et la souris est dans la zone
+    ; Gestion de l'√©tat press√©
     If MouseInZone% And MouseDown(1) Then
         J\IsPressed% = True
     ElseIf Not MouseDown(1) Then
@@ -51,36 +51,37 @@ Function UpdateVirtualJoystick(J.VirtualJoystick)
     
     If J\IsPressed% Then
         ; Calculer la position relative du bouton par rapport au centre
-        J\ButtonX# = MouseX()- CenterX#
+        J\ButtonX# = MouseX() - CenterX#
         J\ButtonY# = MouseY() - CenterY#
         
         ; Calculer la distance depuis le centre
         Local Distance# = Sqr(J\ButtonX# * J\ButtonX# + J\ButtonY# * J\ButtonY#)
         
-        ; Limiter le dÈplacement au rayon
+        ; Limiter le d√©placement au rayon
         If Distance# > J\Radius% Then
             Local Angle# = ATan2(J\ButtonY#, J\ButtonX#)
             J\ButtonX# = Cos(Angle#) * J\Radius%
             J\ButtonY# = Sin(Angle#) * J\Radius%
         EndIf
         
-        ; Calculer les valeurs normalisÈes (-1.0 ‡ 1.0)
+        ; Calculer les valeurs normalis√©es (-1.0 √† 1.0)
         J\ValueX# = J\ButtonX# / Float(J\Radius%)
         J\ValueY# = J\ButtonY# / Float(J\Radius%)
     Else
-        ; Revenir au centre quand rel‚chÈ
-        J\ButtonX# = 0.0
-        J\ButtonY# = 0.0
-        J\ValueX# = 0.0
-        J\ValueY# = 0.0
+        ; Revenir au centre quand rel√¢ch√© (transition douce optionnelle)
+        J\ButtonX# = J\ButtonX# * 0.9
+        J\ButtonY# = J\ButtonY# * 0.9
+        J\ValueX# = J\ButtonX# / Float(J\Radius%)
+        J\ValueY# = J\ButtonY# / Float(J\Radius%)
+        If Abs(J\ButtonX#) < 0.1 Then J\ButtonX# = 0.0
+        If Abs(J\ButtonY#) < 0.1 Then J\ButtonY# = 0.0
     EndIf
-    
-    ; Dessiner le joystick
-    DrawVirtualJoystick(J)
 End Function
 
 ; Fonction pour dessiner le joystick
 Function DrawVirtualJoystick(J.VirtualJoystick)
+    If J = Null Then Return
+    
     Local CenterX# = J\X% + J\Radius%
     Local CenterY# = J\Y% + J\Radius%
     
@@ -88,8 +89,12 @@ Function DrawVirtualJoystick(J.VirtualJoystick)
     Color 100, 100, 100
     Oval J\X%, J\Y%, J\Radius% * 2, J\Radius% * 2, 1
     
-    ; Dessiner le bouton (cercle plus petit)
-    Color 200, 200, 200
+    ; Dessiner le bouton (cercle plus petit, couleur dynamique)
+    If J\IsPressed% Then
+        Color 255, 100, 100  ; Rouge clair quand press√©
+    Else
+        Color 200, 200, 200  ; Gris clair par d√©faut
+    EndIf
     Oval CenterX# + J\ButtonX# - J\Radius% / 2, CenterY# + J\ButtonY# - J\Radius% / 2, J\Radius%, J\Radius%, 1
     
     ; Dessiner les bordures
@@ -99,51 +104,59 @@ End Function
 
 ; Exemple d'utilisation
 Graphics3D 800, 600, 0, 2
+SetBuffer BackBuffer()
 
 ; Create joystick
 Local Joystick.VirtualJoystick = CreateVirtualJoystick(30, 450, 70)
 
 ; Create scene
-cube = CreateCube()
-EntityColor cube, 100 , 100 , 100
-PositionEntity cube,0,0,0
+Local Cube = CreateCube()
+EntityColor Cube, 100, 100, 100
+PositionEntity Cube, 0, 0, 0
 
-cam=CreateCamera()
-CameraRange cam,0.01,1000 
-PositionEntity cam,0,0,-3
+Local Cam = CreateCamera()
+CameraRange Cam, 0.01, 1000 
+PositionEntity Cam, 0, 0, -3
 
-light2=CreateLight(3)
-LightColor light2,255,80,60
-LightConeAngles light2,0,95
-PositionEntity light2,-15,10,-14.5
-LightRange light2,18
-PointEntity light2,cube
+Local Light2 = CreateLight(3)
+LightColor Light2, 255, 80, 60
+LightConeAngles Light2, 0, 95
+PositionEntity Light2, -15, 10, -14.5
+LightRange Light2, 18
+PointEntity Light2, Cube
 
-
-light3=CreateLight(3)
-LightColor light3,70,80,255
-LightConeAngles light3,0,95
-PositionEntity light3,15,10,-14.5
-LightRange light3,18
-PointEntity light3,cube
-
+Local Light3 = CreateLight(3)
+LightColor Light3, 70, 80, 255
+LightConeAngles Light3, 0, 95
+PositionEntity Light3, 15, 10, -14.5
+LightRange Light3, 18
+PointEntity Light3, Cube
 
 Repeat
     Cls
-	
-	TurnEntity Cube, Joystick\ValueX# * 2, Joystick\ValueY# * 2, 0
-	
-	RenderWorld
-	
+    
+    ; Mettre √† jour le joystick avant le rendu 3D
     UpdateVirtualJoystick(Joystick)
     
-	Color 255,0,0
-    ; Afficher les valeurs pour debug
+    ; Appliquer la rotation au cube
+    TurnEntity Cube, Joystick\ValueX# * 2, Joystick\ValueY# * 2, 0
+    
+    ; Rendu 3D
+    RenderWorld
+    
+    ; Dessiner le joystick et le texte apr√®s le rendu 3D
+    DrawVirtualJoystick(Joystick)
+    
+    Color 255, 0, 0
     Text 10, 10, "ValueX: " + Joystick\ValueX#
     Text 10, 30, "ValueY: " + Joystick\ValueY#
     
     Flip
-Until KeyHit(1) ; Quitter avec …chap
+Until KeyHit(1) ; Quitter avec √âchap
+
+FreeEntity Cube
+FreeEntity Cam
+FreeEntity Light2
+FreeEntity Light3
+Delete Joystick
 End
-;~IDEal Editor Parameters:
-;~C#Blitz3D
